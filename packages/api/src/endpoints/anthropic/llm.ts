@@ -192,6 +192,9 @@ function getLLMConfig(
 
   let enableWebSearch = mergedOptions.web_search;
 
+  const enableCodeExecution =
+  process.env.ANTHROPIC_CODE_EXECUTION === 'true';
+
   let requestOptions: AnthropicClientOptions & { stream?: boolean } = {
     model: mergedOptions.model,
     stream: mergedOptions.stream,
@@ -378,6 +381,13 @@ function getLLMConfig(
 
   const tools = [];
 
+  if (enableCodeExecution) {
+  tools.push({
+    type: 'code_execution_20250825',
+    name: 'code_execution',
+  });
+}
+  
   if (enableWebSearch) {
     tools.push({
       type: 'web_search_20250305',
