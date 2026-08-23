@@ -58,6 +58,12 @@
     ]
   },
   {
+  "name": "Excel",
+  "pluginKey": "excel_tool",
+  "description": "Read and inspect Excel or CSV files uploaded by the current user.",
+  "authConfig": []
+},
+  {
     "name": "DALL-E-3",
     "pluginKey": "dalle",
     "description": "[DALL-E-3] Create realistic images and art from a description in natural language",
