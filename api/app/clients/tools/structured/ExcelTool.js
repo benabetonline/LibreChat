@@ -9,14 +9,32 @@ const excelJsonSchema = {
   properties: {
     action: {
       type: 'string',
-      enum: ['inspect'],
-      description: 'Action to perform on the Excel file. Currently supports inspect.',
+      enum: ['inspect', 'replace_text'],
+      description: 'Action to perform on the Excel file. Supports inspect and replace_text.',
     },
     file_name: {
       type: 'string',
       description:
         'Optional Excel filename. If omitted, the most recently uploaded Excel or CSV file for the current user will be used.',
     },
+    search_text: {
+  type: 'string',
+  description: 'Text or cell value to search for when using replace_text.',
+},
+replacement_text: {
+  type: 'string',
+  description: 'New text or cell value that will replace search_text.',
+},
+sheet_name: {
+  type: 'string',
+  description:
+    'Optional worksheet name. If omitted, the replacement will be applied to all worksheets.',
+},
+column: {
+  type: 'string',
+  description:
+    'Optional Excel column letter such as F or H. If omitted, all columns will be searched.',
+},
   },
   required: ['action'],
 };
@@ -138,7 +156,100 @@ The tool can only access files belonging to the current LibreChat user.
       sheets,
     };
   }
+replaceText(filePath, data) {
+  if (data.search_text === undefined || data.search_text === null) {
+    throw new Error('replace_text requires search_text.');
+  }
 
+  if (data.replacement_text === undefined || data.replacement_text === null) {
+    throw new Error('replace_text requires replacement_text.');
+  }
+
+  const workbook = XLSX.readFile(filePath);
+
+  let sheetNames = workbook.SheetNames;
+
+  if (data.sheet_name) {
+    if (!workbook.SheetNames.includes(data.sheet_name)) {
+      throw new Error(`Worksheet "${data.sheet_name}" was not found.`);
+    }
+
+    sheetNames = [data.sheet_name];
+  }
+
+  const requestedColumn = data.column
+    ? String(data.column).trim().toUpperCase()
+    : null;
+
+  if (requestedColumn && !/^[A-Z]{1,3}$/.test(requestedColumn)) {
+    throw new Error('Invalid Excel column. Use a letter such as F or H.');
+  }
+
+  const searchValue = String(data.search_text).trim();
+  const replacementValue = String(data.replacement_text);
+
+  let replacements = 0;
+  const changedSheets = [];
+
+  for (const sheetName of sheetNames) {
+    const worksheet = workbook.Sheets[sheetName];
+    let sheetReplacements = 0;
+
+    for (const address of Object.keys(worksheet)) {
+      if (address.startsWith('!')) {
+        continue;
+      }
+
+      const cell = worksheet[address];
+
+      if (!cell || cell.f || cell.v === undefined || cell.v === null) {
+        continue;
+      }
+
+      if (requestedColumn) {
+        const decoded = XLSX.utils.decode_cell(address);
+        const cellColumn = XLSX.utils.encode_col(decoded.c);
+
+        if (cellColumn !== requestedColumn) {
+          continue;
+        }
+      }
+
+      if (String(cell.v).trim() === searchValue) {
+        cell.v = replacementValue;
+        cell.t = 's';
+
+        replacements += 1;
+        sheetReplacements += 1;
+      }
+    }
+
+    if (sheetReplacements > 0) {
+      changedSheets.push({
+        name: sheetName,
+        replacements: sheetReplacements,
+      });
+    }
+  }
+
+  const extension = path.extname(filePath);
+  const baseName = path.basename(filePath, extension);
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+  const outputPath = path.join(
+    path.dirname(filePath),
+    `${baseName}_modificado_${timestamp}.xlsx`,
+  );
+
+  XLSX.writeFile(workbook, outputPath);
+
+  return {
+    output_path: outputPath,
+    output_file: path.basename(outputPath),
+    replacements,
+    changed_sheets: changedSheets,
+  };
+}
   async _call(data) {
     try {
       const userDirectory = this.getUserDirectory();
@@ -154,7 +265,15 @@ The tool can only access files belonging to the current LibreChat user.
           ...result,
         });
       }
+if (data.action === 'replace_text') {
+  const result = this.replaceText(selectedFile.path, data);
 
+  return JSON.stringify({
+    success: true,
+    original_file: selectedFile.name,
+    ...result,
+  });
+}
       return JSON.stringify({
         success: false,
         error: 'Unsupported Excel action.',
