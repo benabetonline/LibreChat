@@ -201,6 +201,23 @@ export const wolframSchema: ExtendedJsonSchema = {
   },
   required: ['input'],
 };
+/** Excel tool JSON schema */
+export const excelToolSchema: ExtendedJsonSchema = {
+  type: 'object',
+  properties: {
+    action: {
+      type: 'string',
+      enum: ['inspect'],
+      description: 'Action to perform on the Excel file. Currently supports inspect.',
+    },
+    file_name: {
+      type: 'string',
+      description:
+        'Optional Excel filename. If omitted, the most recently uploaded Excel or CSV file for the current user will be used.',
+    },
+  },
+  required: ['action'],
+};
 
 /** Stable Diffusion tool JSON schema */
 export const stableDiffusionSchema: ExtendedJsonSchema = {
@@ -373,6 +390,13 @@ export const toolDefinitions: Record<string, ToolRegistryDefinition> = {
     schema: stableDiffusionSchema,
     toolType: 'builtin',
   },
+  excel_tool: {
+  name: 'excel_tool',
+  description:
+    'Read and inspect Excel or CSV files uploaded by the current user. Use this tool to examine spreadsheet sheets, rows, columns, and values.',
+  schema: excelToolSchema,
+  toolType: 'builtin',
+},
   'azure-ai-search': {
     name: 'azure-ai-search',
     description: "Use the 'azure-ai-search' tool to retrieve search results relevant to your input",
