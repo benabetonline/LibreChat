@@ -207,14 +207,32 @@ export const excelToolSchema: ExtendedJsonSchema = {
   properties: {
     action: {
       type: 'string',
-      enum: ['inspect'],
-      description: 'Action to perform on the Excel file. Currently supports inspect.',
+      enum: ['inspect', 'replace_text'],
+      description: 'Action to perform on the Excel file. Supports inspect and replace_text.',
     },
     file_name: {
       type: 'string',
       description:
         'Optional Excel filename. If omitted, the most recently uploaded Excel or CSV file for the current user will be used.',
     },
+    search_text: {
+  type: 'string',
+  description: 'Text or cell value to search for when using replace_text.',
+},
+replacement_text: {
+  type: 'string',
+  description: 'New text or cell value that will replace search_text.',
+},
+sheet_name: {
+  type: 'string',
+  description:
+    'Optional worksheet name. If omitted, the replacement will be applied to all worksheets.',
+},
+column: {
+  type: 'string',
+  description:
+    'Optional Excel column letter such as F or H. If omitted, all columns will be searched.',
+},
   },
   required: ['action'],
 };
