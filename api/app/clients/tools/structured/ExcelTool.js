@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const XLSX = require('xlsx');
 const { v4: uuidv4 } = require('uuid');
 const { FileContext, FileSources } = require('librechat-data-provider');
@@ -263,7 +264,23 @@ await db.createFile(
   true,
 );
 
-const downloadUrl = `/api/files/download/${this.userId}/${fileId}`;
+const secret = process.env.JWT_SECRET;
+
+if (!secret) {
+  throw new Error('JWT_SECRET is required to generate Excel download links.');
+}
+
+const expires = Date.now() + 5 * 60 * 1000;
+const payload = `${this.userId}:${fileId}:${expires}`;
+
+const signature = crypto
+  .createHmac('sha256', secret)
+  .update(payload)
+  .digest('hex');
+
+const downloadUrl =
+  `/api/files/excel-download/${this.userId}/${fileId}` +
+  `?expires=${expires}&signature=${signature}`;
   
   return {
   output_path: outputPath,
