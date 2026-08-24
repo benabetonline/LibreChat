@@ -14,7 +14,7 @@ const TavilySearchResults = require('./structured/TavilySearchResults');
 const createGeminiImageTool = require('./structured/GeminiImageGen');
 const ExcelTool = require('./structured/ExcelTool');
 const WordTool = require('./structured/WordTool');
-const PowerPointTool = require('./structured/PowerPointToolV2');
+const PowerPointTool = require('./structured/PowerPointToolV3');
 
 module.exports = {
   ...manifest,
