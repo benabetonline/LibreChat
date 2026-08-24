@@ -1,4 +1,9 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const db = require('~/models');
+
 const {
   createFileUsageLimiter,
   createFileLimiters,
@@ -19,6 +24,80 @@ const speech = require('./speech');
 
 const initialize = async () => {
   const router = express.Router();
+  
+    router.get('/excel-download/:userId/:fileId', async (req, res) => {
+    try {
+      const { userId, fileId } = req.params;
+      const { expires, signature } = req.query;
+
+      const secret = process.env.JWT_SECRET;
+
+      if (!secret || !expires || !signature) {
+        return res.status(403).send('Invalid download link');
+      }
+
+      const expiresAt = Number(expires);
+
+      if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) {
+        return res.status(403).send('Download link expired');
+      }
+
+      if (!/^[a-f0-9]{64}$/i.test(String(signature))) {
+        return res.status(403).send('Invalid download signature');
+      }
+
+      const payload = `${userId}:${fileId}:${expiresAt}`;
+
+      const expectedSignature = crypto
+        .createHmac('sha256', secret)
+        .update(payload)
+        .digest('hex');
+
+      const receivedBuffer = Buffer.from(String(signature), 'hex');
+      const expectedBuffer = Buffer.from(expectedSignature, 'hex');
+
+      if (
+        receivedBuffer.length !== expectedBuffer.length ||
+        !crypto.timingSafeEqual(receivedBuffer, expectedBuffer)
+      ) {
+        return res.status(403).send('Invalid download signature');
+      }
+
+      const files = await db.getFiles({
+        user: userId,
+        file_id: fileId,
+      });
+
+      const file = files?.[0];
+
+      if (!file || file.source !== 'local') {
+        return res.status(404).send('File not found');
+      }
+
+      const uploadsRoot = path.resolve('/app/uploads');
+      const userRoot = path.resolve(uploadsRoot, String(userId));
+      const filePath = path.resolve(file.filepath);
+
+      if (!filePath.startsWith(`${userRoot}${path.sep}`)) {
+        return res.status(403).send('Invalid file path');
+      }
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).send('File not found');
+      }
+
+      res.setHeader('Cache-Control', 'private, no-store');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+
+      return res.download(
+        filePath,
+        path.basename(file.filename || 'archivo.xlsx'),
+      );
+    } catch (error) {
+      return res.status(500).send('Error downloading Excel file');
+    }
+  });
+  
   router.use(requireJwtAuth);
   router.use(configMiddleware);
   router.use(checkBan);
