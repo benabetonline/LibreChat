@@ -1,2 +1,2 @@
 export * from './definitions';
-import './officeOverride';
+import './officeStandalone';
