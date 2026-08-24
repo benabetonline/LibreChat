@@ -12,7 +12,9 @@ const TraversaalSearch = require('./structured/TraversaalSearch');
 const createOpenAIImageTools = require('./structured/OpenAIImageTools');
 const TavilySearchResults = require('./structured/TavilySearchResults');
 const createGeminiImageTool = require('./structured/GeminiImageGen');
-const ExcelTool = require('./structured/OfficeDocumentsTool');
+const ExcelTool = require('./structured/ExcelTool');
+const WordTool = require('./structured/WordTool');
+const PowerPointTool = require('./structured/PowerPointTool');
 
 module.exports = {
   ...manifest,
@@ -29,4 +31,6 @@ module.exports = {
   createOpenAIImageTools,
   createGeminiImageTool,
   ExcelTool,
+  WordTool,
+  PowerPointTool,
 };
