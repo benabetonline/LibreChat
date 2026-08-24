@@ -386,6 +386,27 @@ const downloadUrl =
     return value;
   };
 
+    const ensureCellInRange = (worksheet, address) => {
+  const cell = XLSX.utils.decode_cell(address);
+
+  if (!worksheet['!ref']) {
+    worksheet['!ref'] = XLSX.utils.encode_range({
+      s: cell,
+      e: cell,
+    });
+    return;
+  }
+
+  const range = XLSX.utils.decode_range(worksheet['!ref']);
+
+  range.s.r = Math.min(range.s.r, cell.r);
+  range.s.c = Math.min(range.s.c, cell.c);
+  range.e.r = Math.max(range.e.r, cell.r);
+  range.e.c = Math.max(range.e.c, cell.c);
+
+  worksheet['!ref'] = XLSX.utils.encode_range(range);
+};
+    
   for (const operation of data.operations) {
     if (operation.type === 'replace_text') {
       if (
@@ -456,6 +477,8 @@ const downloadUrl =
     if (operation.type === 'set_cell') {
       const { name, worksheet } = getSheet(operation.sheet_name);
       const address = validateCell(operation.cell);
+      
+      ensureCellInRange(worksheet, address);
 
       worksheet[address] = {
         ...(worksheet[address] || {}),
@@ -536,6 +559,8 @@ const downloadUrl =
 
       if (operation.output_cell) {
         const outputAddress = validateCell(operation.output_cell);
+        
+        ensureCellInRange(worksheet, outputAddress);
 
         worksheet[outputAddress] = {
           ...(worksheet[outputAddress] || {}),
