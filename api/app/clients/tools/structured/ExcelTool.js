@@ -1,6 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
+const { v4: uuidv4 } = require('uuid');
+const { FileContext, FileSources } = require('librechat-data-provider');
+const db = require('~/models');
 
 const { Tool } = require('@librechat/agents/langchain/tools');
 
@@ -156,7 +159,7 @@ The tool can only access files belonging to the current LibreChat user.
       sheets,
     };
   }
-replaceText(filePath, data) {
+async replaceText(filePath, data) {
   if (data.search_text === undefined || data.search_text === null) {
     throw new Error('replace_text requires search_text.');
   }
@@ -242,13 +245,35 @@ replaceText(filePath, data) {
   );
 
   XLSX.writeFile(workbook, outputPath);
+const outputFile = path.basename(outputPath);
+const fileId = uuidv4();
+const bytes = fs.statSync(outputPath).size;
 
+await db.createFile(
+  {
+    user: this.userId,
+    file_id: fileId,
+    bytes,
+    filepath: outputPath,
+    filename: outputFile,
+    source: FileSources.local,
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    context: FileContext.message_attachment,
+  },
+  true,
+);
+
+const downloadUrl = `/api/files/download/${this.userId}/${fileId}`;
+  
   return {
-    output_path: outputPath,
-    output_file: path.basename(outputPath),
-    replacements,
-    changed_sheets: changedSheets,
-  };
+  output_path: outputPath,
+  output_file: outputFile,
+  file_id: fileId,
+  download_url: downloadUrl,
+  download_markdown: `[Descargar archivo Excel](${downloadUrl})`,
+  replacements,
+  changed_sheets: changedSheets,
+};
 }
   async _call(data) {
     try {
@@ -257,16 +282,16 @@ replaceText(filePath, data) {
       const selectedFile = this.selectFile(files, data.file_name);
 
       if (data.action === 'inspect') {
-        const result = this.inspectWorkbook(selectedFile.path);
+  const result = this.inspectWorkbook(selectedFile.path);
 
-        return JSON.stringify({
-          success: true,
-          file: selectedFile.name,
-          ...result,
-        });
-      }
+  return JSON.stringify({
+    success: true,
+    file: selectedFile.name,
+    ...result,
+  });
+}
 if (data.action === 'replace_text') {
-  const result = this.replaceText(selectedFile.path, data);
+  const result = await this.replaceText(selectedFile.path, data);
 
   return JSON.stringify({
     success: true,
