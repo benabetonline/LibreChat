@@ -207,8 +207,9 @@ export const excelToolSchema: ExtendedJsonSchema = {
   properties: {
     action: {
       type: 'string',
-      enum: ['inspect', 'replace_text'],
-      description: 'Action to perform on the Excel file. Supports inspect and replace_text.',
+      enum: ['inspect', 'replace_text', 'batch_edit'],
+     description:
+  'Action to perform on the Excel file. Supports inspect, replace_text and batch_edit.',
     },
     file_name: {
       type: 'string',
@@ -232,6 +233,54 @@ column: {
   type: 'string',
   description:
     'Optional Excel column letter such as F or H. If omitted, all columns will be searched.',
+},
+    operations: {
+  type: 'array',
+  description:
+    'List of Excel operations to execute in order when action is batch_edit.',
+  items: {
+    type: 'object',
+    properties: {
+      type: {
+        type: 'string',
+        enum: ['replace_text', 'set_cell', 'clear_cell', 'count_value'],
+        description: 'Type of operation to execute.',
+      },
+      sheet_name: {
+        type: 'string',
+        description: 'Worksheet where the operation will be applied.',
+      },
+      column: {
+        type: 'string',
+        description:
+          'Optional Excel column letter such as F. Used by replace_text or count_value.',
+      },
+      search_text: {
+        type: 'string',
+        description:
+          'Value to search for when using replace_text or count_value.',
+      },
+      replacement_text: {
+        type: 'string',
+        description: 'Replacement value when using replace_text.',
+      },
+      cell: {
+        type: 'string',
+        description:
+          'Target cell such as H11. Used by set_cell or clear_cell.',
+      },
+      value: {
+        type: 'string',
+        description: 'Value to write when using set_cell.',
+      },
+      output_cell: {
+        type: 'string',
+        description:
+          'Cell where the numeric result of count_value will be written.',
+      },
+    },
+    required: ['type'],
+  },
 },
   },
   required: ['action'],
